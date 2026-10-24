@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#05030a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>The Last Ember</title>
+  <meta name="description" content="A tiny tale of light against the dark — a browser game made with three.js.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+  <div id="fx-vignette"></div>
+  <div id="fx-hurt"></div>
+  <div id="fx-flash"></div>
+
+  <!-- ===== HUD ===== -->
+  <div id="hud" class="hidden">
+    <div class="hud-tl">
+      <div id="hud-moon" class="hud-moon"></div>
+      <div id="hud-objective" class="hud-objective"><span class="obj-gem"></span><span id="hud-obj"></span></div>
+      <div id="hud-quest" class="hud-quest hidden"><span id="hud-quest-mark" class="q-mark">!</span><span id="hud-quest-text"></span></div>
+    </div>
+    <div class="hud-tr">
+      <div id="hud-time" class="hud-time">0:00</div>
+      <div class="hud-kills"><span class="kill-icon"></span><span id="hud-kills">0 purged</span></div>
+    </div>
+    <div id="hud-boss" class="hud-boss hidden">
+      <div id="boss-name" class="boss-name">The Hush</div>
+      <div class="boss-bar"><div id="boss-fill"></div><div id="boss-floor"></div></div>
+      <div class="boss-shield-note">Shielded — kindle a Pyre!</div>
+    </div>
+    <div id="combo" class="combo">
+      <div class="combo-num" id="combo-num">0</div>
+      <div class="combo-label">Combo</div>
+      <div class="combo-bar"><div id="combo-fill"></div></div>
+      <div class="combo-mult" id="combo-mult">DMG x1.0</div>
+    </div>
+    <div id="buffs" class="buffs"></div>
+    <div class="hud-bottom">
+      <div class="ability" id="ab-dash"><div class="ab-cd"></div><div class="ab-key">Shift</div><div class="ab-name">Dash</div></div>
+      <div class="ability blade" id="ab-attack"><div class="ab-cd"></div><svg class="ab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3l-9.5 9.5-2-2L6 12l2 2-3.5 3.5 1 1L9 15l2 2 1.5-1.5-2-2L20 4z" fill="currentColor"/></svg><div class="ab-key">LMB</div><div class="ab-name" id="ab-attack-lv">none</div></div>
+      <div class="ability" id="ab-jump"><div class="ab-cd"></div><div class="ab-key">Space</div><div class="ab-name">Jump</div></div>
+      <div class="light-meter" id="light-meter">
+        <div class="lm-head"><span>Light</span><span id="lm-value">100</span></div>
+        <div class="lm-bar"><div id="lm-ghost"></div><div id="lm-fill"></div></div>
+      </div>
+      <div class="ability" id="ab-pulse"><div class="ab-cd"></div><div class="ab-key">E</div><div class="ab-name">Pulse</div></div>
+      <div class="item-slot" id="slot-flask"><img id="slot-flask-img" alt=""><span class="slot-n" id="slot-flask-n">x0</span><span class="slot-key">1</span></div>
+      <div class="item-slot" id="slot-bomb"><img id="slot-bomb-img" alt=""><span class="slot-n" id="slot-bomb-n">x0</span><span class="slot-key">2</span></div>
+    </div>
+    <canvas id="radar" width="180" height="180"></canvas>
+    <div id="toast" class="toast"></div>
+    <div id="hint" class="hint"></div>
+    <div id="prompt" class="prompt"></div>
+    <div id="t-stick-zone" class="t-stick-zone"></div>
+    <div id="t-stick" class="t-stick"><div id="t-knob" class="t-knob"></div></div>
+    <button id="t-pause" class="t-pause" aria-label="Pause"><span></span><span></span></button>
+    <div id="dialog" class="dialog hidden">
+      <div id="dlg-portrait" class="dlg-portrait"></div>
+      <div class="dlg-body">
+        <div id="dlg-name" class="dlg-name"></div>
+        <div id="dlg-text" class="dlg-text"></div>
+      </div>
+      <div class="dlg-foot"><span id="dlg-page"></span><span class="dlg-next"><kbd>F</kbd> / Click &#9656;</span></div>
+    </div>
+  </div>
+  <div id="floaters" class="floaters"></div>
+  <div id="fps" class="fps hidden"></div>
+
+  <!-- ===== Screens ===== -->
+  <div id="scr-splash" class="screen splash">
+    <div class="title">The Last Ember</div>
+    <div class="subtitle">a tiny tale of light against the dark</div>
+    <div class="splash-prompt">click anywhere to begin</div>
+    <div class="rotate-hint">Turn your phone sideways for the best view</div>
+  </div>
+
+  <div id="scr-menu" class="screen menu">
+    <div class="menu-head">
+      <div class="title">The Last Ember</div>
+      <div class="subtitle">a tiny tale of light against the dark</div>
+    </div>
+    <div class="menu-buttons">
+      <button class="btn primary" data-action="new">New Journey</button>
+      <button class="btn" id="btn-chapters" data-action="chapters">Chapters</button>
+      <button class="btn" data-action="settings">Settings</button>
+      <button class="btn" data-action="howto">How to Play</button>
+      <button class="btn" data-action="credits">Credits</button>
+      <button class="btn hidden" id="btn-fullscreen" data-action="fullscreen">Fullscreen</button>
+      <button class="btn hidden" id="btn-site" data-action="exit-site">Back to Website</button>
+    </div>
+    <div class="menu-foot" id="menu-foot">best with sound on · press F11 for fullscreen</div>
+  </div>
+
+  <div id="scr-chapters" class="screen dim">
+    <div class="panel wide">
+      <h2>Chapters</h2>
+      <div id="chapter-list" class="chapter-list"></div>
+      <div class="panel-actions"><button class="btn" data-action="back-menu">Back</button></div>
+    </div>
+  </div>
+
+  <div id="scr-settings" class="screen dim">
+    <div class="panel">
+      <h2>Settings</h2>
+      <div id="settings-list" class="settings-list"></div>
+      <div class="panel-actions">
+        <button class="btn subtle" id="btn-reset-progress">Reset Progress</button>
+        <button class="btn primary" data-action="settings-back">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scr-howto" class="screen dim">
+    <div class="panel wide">
+      <h2>How to Play</h2>
+      <div class="howto-grid touch-only">
+        <div class="keys"><b>Left side</b></div><div>Drag anywhere on the left half to move and turn</div>
+        <div class="keys"><b>Sword</b></div><div>Strike — hold it to keep chaining combos</div>
+        <div class="keys"><b>Jump</b> → <b>Sword</b></div><div>Meteor Slam — crash down on everything below</div>
+        <div class="keys"><b>Dash</b> → <b>Sword</b></div><div>Dash Strike — cut through everything in your path</div>
+        <div class="keys"><b>Pulse</b></div><div>Blasts everything around you (costs 12 light)</div>
+        <div class="keys"><b>Talk</b></div><div>Appears when you stand next to someone</div>
+        <div class="keys"><b>Flask</b> · <b>Bomb</b></div><div>Restore light · huge blast</div>
+      </div>
+      <div class="howto-grid desktop-only">
+        <div class="keys"><kbd>W</kbd><kbd>S</kbd> <span class="or">or</span> <kbd>↑</kbd><kbd>↓</kbd></div><div>Move forward / back</div>
+        <div class="keys"><kbd>A</kbd><kbd>D</kbd> <span class="or">or</span> <kbd>←</kbd><kbd>→</kbd></div><div>Turn left / right</div>
+        <div class="keys"><kbd>Space</kbd></div><div>Jump</div>
+        <div class="keys"><kbd>Shift</kbd></div><div>Dash — you are untouchable for a moment</div>
+        <div class="keys"><kbd>Left Click</kbd> <span class="or">or</span> <kbd>J</kbd></div><div>Sunblade strike — 3 in a row for a spinning finisher</div>
+        <div class="keys"><kbd>Space</kbd> + <kbd>Strike</kbd></div><div>Meteor Slam — crash down on everything below</div>
+        <div class="keys"><kbd>Shift</kbd> + <kbd>Strike</kbd></div><div>Dash Strike — cut through everything in your path</div>
+        <div class="keys"><kbd>E</kbd> <span class="or">or</span> <kbd>Right Click</kbd></div><div>Light Pulse — blasts everything around you (costs 12 light)</div>
+        <div class="keys"><kbd>F</kbd></div><div>Talk to moon folk</div>
+        <div class="keys"><kbd>1</kbd> <kbd>2</kbd></div><div>Ember Flask (restore light) · Nova Bomb (huge blast)</div>
+        <div class="keys"><kbd>Esc</kbd> <span class="or">or</span> <kbd>P</kbd></div><div>Pause</div>
+      </div>
+      <ul class="tips">
+        <li><b>Your light is your life.</b> It slowly fades — golden Lumen shards restore it.</li>
+        <li><b>Shadows</b> drain your light on contact. Every Shadow you purge gives a little light back. Keep a <b>combo</b> going for bonus damage.</li>
+        <li>Gather every shard on a moon and a <b>guardian boss</b> rises. Defeat it to open the <b>Skyward Beacon</b>.</li>
+        <li>Moon folk with a <b>!</b> have quests. Their rewards upgrade your Sunblade and your light.</li>
+        <li>Smash glowing <b>Star Caches</b> for items and power-ups: Haste, Fury, Aegis, Radiance and Magnet.</li>
+        <li>The <b>radar</b> maps the whole moon: you are the centre, the rim is the far side. The small golden arrow points to your next goal.</li>
+      </ul>
+      <div class="panel-actions"><button class="btn" data-action="back-menu">Back</button></div>
+    </div>
+  </div>
+
+  <div id="scr-credits" class="screen dim">
+    <div class="panel">
+      <h2>Credits</h2>
+      <div class="credits">
+        <p class="credits-title">The Last Ember</p>
+        <p>Design, code, art, music &amp; story<br><span>built in a single session by Claude</span></p>
+        <p>Rendered with <span>three.js</span></p>
+        <p>Every model, texture, sound and song in this game is generated procedurally — there are no external assets.</p>
+        <p class="credits-thanks">Thank you for keeping the light alive.</p>
+      </div>
+      <div class="panel-actions"><button class="btn" data-action="back-menu">Back</button></div>
+    </div>
+  </div>
+
+  <div id="scr-story" class="screen story">
+    <div class="story-inner"><div id="story-text" class="story-text"></div></div>
+    <div class="story-foot"><div id="story-dots" class="story-dots"></div><div class="story-hint">click or press Enter</div></div>
+    <button class="btn small story-skip" data-action="story-skip">Skip ›</button>
+  </div>
+
+  <div id="scr-intro" class="screen passive intro">
+    <div class="intro-card">
+      <div id="intro-num" class="intro-num"></div>
+      <div id="intro-name" class="intro-name"></div>
+      <div id="intro-line" class="intro-line"></div>
+    </div>
+  </div>
+
+  <div id="scr-pause" class="screen dim">
+    <div class="panel narrow">
+      <h2>Paused</h2>
+      <div class="menu-buttons">
+        <button class="btn primary" data-action="resume">Resume</button>
+        <button class="btn" data-action="restart">Restart Moon</button>
+        <button class="btn" data-action="pause-settings">Settings</button>
+        <button class="btn hidden" id="btn-fullscreen-pause" data-action="fullscreen">Fullscreen</button>
+        <button class="btn" data-action="quit">Main Menu</button>
+        <button class="btn hidden" id="btn-site-pause" data-action="exit-site">Back to Website</button>
+      </div>
+      <div class="pause-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> jump · <kbd>Shift</kbd> dash<br><kbd>LMB</kbd>/<kbd>J</kbd> strike · <kbd>E</kbd>/<kbd>RMB</kbd> pulse · <kbd>F</kbd> talk · <kbd>1</kbd> flask · <kbd>2</kbd> bomb</div>
+    </div>
+  </div>
+
+  <div id="scr-complete" class="screen dim">
+    <div class="panel">
+      <div class="result-kicker">Moon cleared</div>
+      <h2 id="complete-moon"></h2>
+      <div id="complete-stats" class="stats"></div>
+      <p id="complete-line" class="result-line"></p>
+      <div class="panel-actions">
+        <button class="btn" data-action="quit">Main Menu</button>
+        <button class="btn primary" id="btn-next" data-action="next">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scr-gameover" class="screen dim">
+    <div class="panel">
+      <div class="result-kicker dark">Your light went out</div>
+      <h2 id="gameover-moon"></h2>
+      <p id="gameover-tip" class="result-line"></p>
+      <div class="panel-actions">
+        <button class="btn" data-action="quit">Main Menu</button>
+        <button class="btn hidden" id="btn-restart-moon" data-action="restart-moon">Restart Moon</button>
+        <button class="btn primary" id="btn-retry" data-action="retry">Rekindle</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scr-end" class="screen end">
+    <div class="panel">
+      <div class="title small">The End</div>
+      <p class="result-line">The Sun burns again. Thank you for playing <b>The Last Ember</b>.</p>
+      <div id="end-stats" class="stats"></div>
+      <div class="panel-actions"><button class="btn primary" data-action="quit">Return to Menu</button></div>
+    </div>
+  </div>
+
+  <div id="scr-error" class="screen dim">
+    <div class="panel">
+      <h2>Something went dark</h2>
+      <p id="error-msg" class="result-line">This game needs WebGL. Try a recent version of Chrome, Edge or Firefox.</p>
+    </div>
+  </div>
+
+  <div id="fx-fade"></div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="lib/Pass.js"></script>
+  <script src="lib/CopyShader.js"></script>
+  <script src="lib/LuminosityHighPassShader.js"></script>
+  <script src="lib/ShaderPass.js"></script>
+  <script src="lib/RenderPass.js"></script>
+  <script src="lib/EffectComposer.js"></script>
+  <script src="lib/UnrealBloomPass.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/touch.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/bosses.js"></script>
+  <script src="js/npc.js"></script>
+  <script src="js/level.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
