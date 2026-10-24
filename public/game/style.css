@@ -1044,3 +1044,32 @@ body.touch .toast { font-size: 16px; white-space: normal; width: max-content; ma
   .story-text { font-size: clamp(18px, 4.6vh, 30px); }
   .result-line { font-size: 17px; margin-top: 10px; }
 }
+
+/* ===== always-visible fullscreen toggle ===== */
+.fs-btn {
+  position: fixed;
+  z-index: 60;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 175, 100, 0.55);
+  background: rgba(14, 6, 10, 0.72);
+  color: #ffe2c0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fs-btn:hover { border-color: rgba(255, 196, 120, 0.95); box-shadow: 0 0 16px rgba(255, 130, 40, 0.4); }
+.fs-btn svg { width: 22px; height: 22px; }
+.fs-btn .fs-out, body.is-fs .fs-btn .fs-in { display: none; }
+body.is-fs .fs-btn .fs-out { display: block; }
+body.has-fs .hud-tr { right: 68px; }
+body.touch .fs-btn { top: max(10px, env(safe-area-inset-top)); right: calc(62px + env(safe-area-inset-right)); width: 42px; height: 42px; border-radius: 50%; }
+body.touch.has-fs .hud-tr { right: calc(114px + env(safe-area-inset-right)); }
+body:not(.touch) .story-skip { right: 66px; }
+body.touch .story-skip { top: 62px; }

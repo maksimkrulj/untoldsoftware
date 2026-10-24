@@ -210,7 +210,9 @@ class Game {
     this.ui.show('splash');
     this.fade(0, 1400, null, false);
 
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.autoPause(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.autoPause(); else this.audio.resume(); });
+    // phones suspend or interrupt audio (calls, app switching); any tap brings it back
+    document.addEventListener('pointerdown', () => this.audio.resume(), true);
     window.addEventListener('wheel', e => {
       if (['intro', 'playing', 'dialog', 'dying', 'ascend', 'finale'].includes(this.state)) e.preventDefault();
     }, { passive: false });

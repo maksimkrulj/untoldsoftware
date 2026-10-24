@@ -55,8 +55,16 @@ class UI {
       document.querySelector('.dlg-next').textContent = 'Tap ▸';
     }
     this.$('menu-foot').textContent = IS_TOUCH ? 'best with sound on · turn your phone sideways'
-      : (EMBEDDED ? 'best with sound on' : 'best with sound on · press F11 for fullscreen');
+      : (fullscreenSupported() || EMBEDDED ? 'best with sound on' : 'best with sound on · press F11 for fullscreen');
     const fs = fullscreenSupported();
+    const fsBtn = this.$('fs-btn');
+    fsBtn.classList.toggle('hidden', !fs);
+    document.body.classList.toggle('has-fs', fs);
+    fsBtn.addEventListener('click', e => { e.stopPropagation(); this.game.audio.sfx('click'); toggleFullscreen(); });
+    fsBtn.addEventListener('pointerdown', e => e.stopPropagation());
+    const syncFs = () => document.body.classList.toggle('is-fs', !!(document.fullscreenElement || document.webkitFullscreenElement));
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
     this.$('btn-fullscreen').classList.toggle('hidden', !fs);
     this.$('btn-fullscreen-pause').classList.toggle('hidden', !fs);
     this.$('btn-site').classList.toggle('hidden', !(FROM_SITE && !EMBEDDED));

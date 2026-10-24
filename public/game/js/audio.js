@@ -62,6 +62,9 @@ class AudioEngine {
     if (!AC) return;
     try { this.ctx = new AC(); } catch (e) { this.ctx = null; return; }
     const ctx = this.ctx;
+    // Phone speakers barely reproduce the low pads and bass, so phones get a brighter, louder mix.
+    this.mobile = IS_TOUCH;
+    this.unlockMobile();
 
     this.out = ctx.createDynamicsCompressor();
     this.out.threshold.value = -12;
@@ -105,7 +108,28 @@ class AudioEngine {
   }
 
   resume() {
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume().catch(() => {});
+  }
+
+  // iOS mutes Web Audio while the ring/silent switch is on unless the page plays as media.
+  unlockMobile() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
+    try {
+      const rate = 8000, n = 800;
+      const buf = new ArrayBuffer(44 + n * 2);
+      const v = new DataView(buf);
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+      str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+      v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      str(36, 'data'); v.setUint32(40, n * 2, true);
+      const el = document.createElement('audio');
+      el.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      el.loop = true;
+      el.setAttribute('playsinline', '');
+      el.play().catch(() => {});
+      this.silentEl = el;
+    } catch (e) { /* best effort */ }
   }
 
   setVolumes(master, music, sfx) {
@@ -117,7 +141,7 @@ class AudioEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.vol.master, t, 0.05);
-    this.musicGain.gain.setTargetAtTime(this.vol.music * 0.9, t, 0.05);
+    this.musicGain.gain.setTargetAtTime(this.vol.music * (this.mobile ? 1.6 : 0.9), t, 0.05);
     this.sfxGain.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
   }
 
@@ -207,11 +231,11 @@ class AudioEngine {
 
   padNote(n, t, dur, M, bus) {
     const ctx = this.ctx;
-    const f = mtof(n);
+    const f = mtof(n + (this.mobile ? 12 : 0));
     const g = ctx.createGain();
     const filt = ctx.createBiquadFilter();
     filt.type = 'lowpass';
-    filt.frequency.value = M.padCutoff;
+    filt.frequency.value = M.padCutoff * (this.mobile ? 2.4 : 1);
     filt.Q.value = 0.5;
     const v = M.padVol;
     g.gain.setValueAtTime(0, t);
@@ -235,10 +259,10 @@ class AudioEngine {
     const ctx = this.ctx;
     const o = ctx.createOscillator();
     o.type = 'triangle';
-    o.frequency.value = mtof(n);
+    o.frequency.value = mtof(n + (this.mobile ? 24 : 0));
     const filt = ctx.createBiquadFilter();
     filt.type = 'lowpass';
-    filt.frequency.value = 420;
+    filt.frequency.value = this.mobile ? 1400 : 420;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(M.bassVol, t + 0.02);
@@ -252,7 +276,7 @@ class AudioEngine {
     const ctx = this.ctx;
     const o = ctx.createOscillator();
     o.type = wave;
-    o.frequency.value = mtof(n);
+    o.frequency.value = mtof(this.mobile && n < 72 ? n + 12 : n);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.008);
